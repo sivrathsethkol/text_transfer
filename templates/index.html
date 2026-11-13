@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web Clipboard Sync</title>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 20px;
+        text-align: center;
+        background: #1e1e1e;
+        color: #fff;
+      }
+      textarea {
+        width: 100%;
+        height: 120px;
+        padding: 10px;
+        font-size: 16px;
+        background: #2d2d2d;
+        color: #fff;
+        border: 1px solid #444;
+        border-radius: 5px;
+        box-sizing: border-box;
+      }
+      button {
+        background: #007acc;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 5px;
+        margin: 10px 5px;
+      }
+      button:hover {
+        background: #005999;
+      }
+      .copy-btn {
+        background: #28a745;
+      }
+      .copy-btn:hover {
+        background: #1e7e34;
+      }
+      .display-container {
+        margin-top: 30px;
+        text-align: left;
+      }
+      .display-box {
+        width: 100%;
+        min-height: 100px;
+        padding: 12px;
+        background: #252526;
+        border: 1px solid #007acc;
+        border-radius: 5px;
+        color: #d4d4d4;
+        font-family: Consolas, monospace;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        box-sizing: border-box;
+      }
+      p {
+        color: #888;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Cloud Clipboard Sync</h2>
+    <p>Type or paste text below to send it to other devices.</p>
+
+    <textarea
+      id="clipboardInput"
+      placeholder="Type or paste text to send..."
+    ></textarea>
+    <br />
+    <button onclick="sendText()">Push to Clipboard</button>
+    <button onclick="fetchText()">Refresh Now</button>
+
+    <div class="display-container">
+      <h3>Live Received Text:</h3>
+      <div id="liveDisplay" class="display-box">Waiting for text...</div>
+      <button class="copy-btn" onclick="copyReceived()">Copy to Device</button>
+    </div>
+
+    <script>
+      // Automatically uses your laptop's IP address when accessed from a phone/tablet
+      const BACKEND_URL = window.location.origin;
+      let lastSyncedText = "";
+
+      async function sendText() {
+        const text = document.getElementById("clipboardInput").value;
+        if (!text.trim()) return;
+
+        try {
+          let response = await fetch(`${BACKEND_URL}/update`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: text }),
+          });
+          if (response.ok) {
+            document.getElementById("liveDisplay").textContent = text;
+            lastSyncedText = text;
+            document.getElementById("clipboardInput").value = "";
+          }
+        } catch (err) {
+          alert("Error sending text: " + err);
+        }
+      }
+
+      async function fetchText() {
+        try {
+          let response = await fetch(`${BACKEND_URL}/get`);
+          let data = await response.json();
+          if (data.text !== undefined && data.text !== lastSyncedText) {
+            lastSyncedText = data.text;
+            document.getElementById("liveDisplay").textContent =
+              data.text || "(Clipboard is empty)";
+          }
+        } catch (err) {
+          console.error("Error fetching text:", err);
+        }
+      }
+
+      function copyReceived() {
+        const text = document.getElementById("liveDisplay").textContent;
+        navigator.clipboard.writeText(text).then(() => {
+          alert("Copied to this device's clipboard!");
+        });
+      }
+
+      // Automatically check for new text from other devices every 2 seconds
+      setInterval(fetchText, 2000);
+      fetchText();
+    </script>
+  </body>
+</html>
